@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>轴承布置与载荷计算工具</title>
+<style>
+  :root {
+    --blue: #1a4a8a; --blue-light: #2d6ec0; --blue-dark: #0c1d3a;
+    --bg: #6878a8; --card: #c0d0e8; --border: #5878b0;
+    --ok: #0a4820; --err: #7c1510; --warn: #6a4400;
+    --ok-bg: #90d0a8; --err-bg: #e8b0ac; --warn-bg: #ecd880;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { font-family: "微软雅黑","Microsoft YaHei","PingFang SC","Helvetica Neue",sans-serif; background: var(--bg); color: #0a0a1a; font-size: 18px; overflow-x: hidden; }
+
+  .app-header { background: var(--blue-dark); color: white; padding: 18px 20px; display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+  .app-header h1 { font-size: 24px; font-weight: 700; line-height: 1.3; }
+  .app-header .sub { font-size: 15px; opacity: 0.90; margin-top: 4px; line-height: 1.6; }
+
+  .content { padding: 16px 14px; max-width: 1100px; margin: 0 auto; }
+
+  .card { background: var(--card); border: 2px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.20); }
+  .card-title { font-size: 20px; font-weight: 700; color: var(--blue); border-bottom: 2px solid var(--border); padding-bottom: 12px; margin-bottom: 16px; display: flex; align-items: center; gap: 9px; }
+  .card-title .icon { font-size: 20px; }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+  .grid4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 14px; }
+
+  .field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
+  .field label { font-size: 16px; color: #111; font-weight: 700; line-height: 1.4; }
+  .field input, .field select {
+    padding: 11px 12px; border: 2px solid #6888b8; border-radius: 8px;
+    font-size: 16px; background: #dce8f8; transition: border-color 0.15s;
+    color: #080818; min-height: 48px; font-family: inherit;
+    -webkit-appearance: none; appearance: none;
+  }
+  .field select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M6 8L1 3h10z' fill='%23333'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; }
+  .field input:focus, .field select:focus { outline: none; border-color: var(--blue-light); background: white; }
+  .field .unit { font-size: 13px; color: #444; margin-top: 2px; line-height: 1.4; font-weight: 500; }
+
+  .btn { padding: 14px 28px; border: none; border-radius: 8px; font-size: 17px; font-weight: 700; cursor: pointer; transition: all 0.15s; min-height: 50px; font-family: inherit; -webkit-tap-highlight-color: transparent; }
+  .btn-primary { background: var(--blue-light); color: white; }
+  .btn-primary:hover { background: var(--blue); }
+  .btn-primary:active { background: var(--blue-dark); transform: scale(0.98); }
+  .btn-bar { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 14px; }
+
+  .formula-box {
+    background: #a8bcd8; border-left: 5px solid var(--blue-light);
+    padding: 12px 14px; border-radius: 0 8px 8px 0; margin: 10px 0;
+    font-family: "Consolas","Courier New",monospace; font-size: 14px;
+    color: #08183c; line-height: 1.9; overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    word-break: break-word; white-space: pre-wrap;
+  }
+
+  .result-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin-top: 12px; }
+  .result-card { background: #b4c8e4; border: 2px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+  .result-card .rc-label { font-size: 14px; color: #111; margin-bottom: 5px; line-height: 1.4; font-weight: 600; }
+  .result-card .rc-value { font-size: 24px; font-weight: 700; color: #0a2860; font-family: monospace; }
+  .result-card .rc-unit { font-size: 14px; color: #333; }
+  .result-card .rc-note { font-size: 12px; color: #334; margin-top: 4px; line-height: 1.4; font-family: monospace; word-break: break-all; }
+
+  .tip-box { background: #90c4e8; border: 2px solid #4090c8; border-radius: 8px; padding: 12px 14px; font-size: 15px; color: #041830; margin: 10px 0; line-height: 1.7; font-weight: 500; }
+
+  .section-title { font-size: 17px; font-weight: 700; color: var(--blue); margin: 18px 0 10px; border-left: 5px solid var(--blue-light); padding-left: 10px; }
+
+  .method-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 6px; }
+
+  /* ===== Tablet ===== */
+  @media (max-width: 900px) {
+    .grid4 { grid-template-columns: 1fr 1fr; }
+    .grid3 { grid-template-columns: 1fr 1fr; }
+  }
+
+  /* ===== Mobile ===== */
+  @media (max-width: 600px) {
+    body { font-size: 15px; }
+    .app-header { padding: 14px 12px; flex-direction: column; gap: 4px; }
+    .app-header h1 { font-size: 19px; }
+    .app-header .sub { font-size: 12px; line-height: 1.5; }
+    .content { padding: 10px 8px; }
+    .grid2, .grid3, .grid4 { grid-template-columns: 1fr !important; gap: 6px; }
+    .card { padding: 12px 10px; margin-bottom: 12px; border-radius: 10px; }
+    .card-title { font-size: 17px; padding-bottom: 8px; margin-bottom: 12px; gap: 6px; }
+    .card-title .icon { font-size: 17px; }
+    .field { margin-bottom: 8px; gap: 3px; }
+    .field label { font-size: 14px; line-height: 1.3; }
+    .field input, .field select { font-size: 16px; padding: 10px 10px; min-height: 44px; border-radius: 6px; }
+    .field .unit { font-size: 12px; line-height: 1.3; color: #555; }
+    .btn { font-size: 16px; padding: 12px 16px; width: 100%; min-height: 48px; border-radius: 8px; }
+    .btn-bar { flex-direction: column; gap: 8px; }
+    .formula-box { font-size: 12px; padding: 10px; border-left-width: 4px; line-height: 1.7; overflow-x: auto; white-space: pre-wrap; word-break: break-all; }
+    .result-grid { grid-template-columns: 1fr !important; gap: 8px; margin-top: 10px; }
+    .method-row { grid-template-columns: 1fr !important; gap: 8px; }
+    .result-card { padding: 10px 12px; border-radius: 8px; }
+    .result-card .rc-value { font-size: 22px; }
+    .result-card .rc-label { font-size: 13px; }
+    .result-card .rc-note { font-size: 11px; line-height: 1.3; }
+    .result-card .rc-unit { font-size: 13px; }
+    .section-title { font-size: 15px; margin: 12px 0 8px; padding-left: 8px; border-left-width: 4px; }
+    .tip-box { font-size: 13px; padding: 10px 12px; line-height: 1.6; }
+  }
+user-select: none
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <div>
+    <h1>📏 轴承布置与载荷计算工具</h1>
+    <div class="sub">主动锥齿轮支承方式：悬臂式（Overhang） / 跨置式（Straddle）　|　从动齿轮差速器壳两侧轴承载荷计算</div>
+  </div>
+</div>
+
+<div class="content">
+
+  <!-- ═══════════ 齿轮参数 ═══════════ -->
+  <div class="card">
+    <div class="card-title"><span class="icon">⚙️</span>齿轮参数（用于力臂计算）</div>
+    <div class="grid2">
+      <div class="field"><label>主动轮齿面中点圆直径 D<sub>m1</sub> (mm)</label><input type="number" id="Dm1" value="60" step="0.1"><div class="unit">用于主动轮轴承轴向力对径向力的力臂</div></div>
+      <div class="field"><label>从动轮齿面中点圆直径 D<sub>m2</sub> (mm)</label><input type="number" id="Dm2" value="280" step="0.1"><div class="unit">用于从动轮轴承轴向力对径向力的力臂</div></div>
+    </div>
+  </div>
+
+  <!-- ═══════════ 齿面力输入 ═══════════ -->
+  <div class="card">
+    <div class="card-title"><span class="icon">🧮</span>齿面力（直接输入,单位 N）</div>
+
+    <div class="section-title">主动锥齿轮齿面力</div>
+    <div class="grid3">
+      <div class="field"><label>主动轮圆周力 F<sub>1</sub> (N)</label><input type="number" id="F1" value="5000" step="1"><div class="unit">切向力 F₁ = 2T₁/D<sub>m1</sub></div></div>
+      <div class="field"><label>主动轮轴向力 F<sub>ax1</sub> (N)</label><input type="number" id="Fax1" value="2000" step="1"><div class="unit">沿主动轮轴线方向</div></div>
+      <div class="field"><label>主动轮径向力 F<sub>Rx1</sub> (N)</label><input type="number" id="FRx1" value="1500" step="1"><div class="unit">垂直于主动轮轴线</div></div>
+    </div>
+
+    <div class="section-title">从动锥齿轮齿面力</div>
+    <div class="grid3">
+      <div class="field"><label>从动轮圆周力 F<sub>2</sub> (N)</label><input type="number" id="F2" value="5000" step="1"><div class="unit">切向力 F₂ = 2T₂/D<sub>m2</sub></div></div>
+      <div class="field"><label>从动轮轴向力 F<sub>ax2</sub> (N)</label><input type="number" id="Fax2" value="1500" step="1"><div class="unit">沿从动轮轴线方向</div></div>
+      <div class="field"><label>从动轮径向力 F<sub>Rx2</sub> (N)</label><input type="number" id="FRx2" value="2000" step="1"><div class="unit">垂直于从动轮轴线</div></div>
+    </div>
+  </div>
+
+  <!-- ═══════════ 轴承布置 ═══════════ -->
+  <div class="card">
+    <div class="card-title"><span class="icon">📐</span>轴承布置与尺寸参数</div>
+    <div class="grid3">
+      <div class="field"><label>主动轮支承方式</label>
+        <select id="bearingType" onchange="onBearingTypeChange()">
+          <option value="cantilever" selected>悬臂式（Overhang）</option>
+          <option value="straddle">跨置式（Straddle）</option>
+        </select>
+        <div class="unit">悬臂式：前后两轴承在节锥顶点同侧；跨置式：主动轮位于两轴承之间</div>
+      </div>
+    </div>
+
+    <div class="section-title" id="cantileverTitle">悬臂式尺寸参数</div>
+    <div class="grid4" id="cantileverFields">
+      <div class="field"><label>前后轴承中心距 b (mm)</label><input type="number" id="ba" value="55"><div class="unit">两轴承间距</div></div>
+      <div class="field"><label>齿面中点至前轴承距离 a (mm)</label><input type="number" id="bb" value="40"><div class="unit">主动轮齿面中点到后轴承</div></div>
+      <div class="field"><label>从动轮至长边轴承距离 d (mm)</label><input type="number" id="bc" value="120"><div class="unit">从动轮齿面中点到长侧轴承</div></div>
+      <div class="field"><label>从动轮至短边轴承距离 c (mm)</label><input type="number" id="bd" value="170"><div class="unit">从动轮齿面中点到短侧轴承</div></div>
+    </div>
+
+    <div class="section-title" id="straddleTitle" style="display:none">跨置式尺寸参数</div>
+    <div class="grid4" id="straddleFields" style="display:none">
+      <div class="field"><label>前轴承至齿面中点 a₁ (mm)</label><input type="number" id="ba1" value="60"><div class="unit">节锥前侧轴承到齿面中点</div></div>
+      <div class="field"><label>齿面中点至后轴承 a₂ (mm)</label><input type="number" id="ba2" value="80"><div class="unit">齿面中点到节锥后侧轴承</div></div>
+      <div class="field"><label>从动轮至长边轴承距离 d (mm)</label><input type="number" id="bc_s" value="120"><div class="unit">从动轮齿面中点到长侧轴承</div></div>
+      <div class="field"><label>从动轮至短边轴承距离 c (mm)</label><input type="number" id="bd_s" value="170"><div class="unit">从动轮齿面中点到短侧轴承</div></div>
+    </div>
+
+    <div class="btn-bar">
+      <button class="btn btn-primary" onclick="calcBearingLoad()">计算轴承载荷</button>
+    </div>
+
+    <div id="bearingResults" style="margin-top:12px"></div>
+  </div>
+
+</div>
+
+<script>
+function v(id){ return parseFloat(document.getElementById(id).value) || 0; }
+
+function fmtN(x, dp){
+  if (x === null || x === undefined || isNaN(x)) return '—';
+  dp = (dp === undefined) ? 0 : dp;
+  return Number(x).toFixed(dp);
+}
+
+function mkCard(o){
+  return '<div class="result-card">' +
+    '<div class="rc-label">' + o.label + '</div>' +
+    '<div class="rc-value">' + o.value + ' <span class="rc-unit">' + (o.unit||'') + '</span></div>' +
+    (o.note ? '<div class="rc-note">' + o.note + '</div>' : '') +
+  '</div>';
+}
+
+function onBearingTypeChange(){
+  const isStraddle = document.getElementById('bearingType').value === 'straddle';
+  document.getElementById('cantileverTitle').style.display  = isStraddle ? 'none' : '';
+  document.getElementById('cantileverFields').style.display = isStraddle ? 'none' : '';
+  document.getElementById('straddleTitle').style.display    = isStraddle ? '' : 'none';
+  document.getElementById('straddleFields').style.display   = isStraddle ? '' : 'none';
+  document.getElementById('bearingResults').innerHTML = '';
+}
+
+function calcBearingLoad(){
+  const isStraddle = document.getElementById('bearingType').value === 'straddle';
+
+  const Dm1 = v('Dm1'), Dm2 = v('Dm2');
+  const F1 = v('F1'),   Fax1 = Math.abs(v('Fax1')), FRx1 = Math.abs(v('FRx1'));
+  const F2 = v('F2'),   Fax2 = Math.abs(v('Fax2')), FRx2 = Math.abs(v('FRx2'));
+
+  if (!Dm1 || !Dm2) { alert('请填写 Dm1 与 Dm2'); return; }
+
+  let html = '';
+
+  if (!isStraddle) {
+    // ══ 悬臂式 ══
+    const b_ = v('ba'), a_ = v('bb');
+    const c_driven = v('bd');   // 短侧止推C
+    const d_driven = v('bc');   // 长侧浮动D
+    const span2 = c_driven + d_driven;
+
+    const Far   = Math.sqrt(Math.pow(F1*(a_+b_)/a_,2)+Math.pow(FRx1*(a_+b_)/a_-Fax1*Dm1/(2*a_),2));
+    const Fax_A = Fax1;
+    const Fbr   = Math.sqrt(Math.pow(F1*b_/a_,2)+Math.pow(FRx1*b_/a_-Fax1*Dm1/(2*a_),2));
+
+    const Fcr   = Math.sqrt(Math.pow(F2*d_driven/span2,2)+Math.pow(FRx2*d_driven/span2+Fax2*Dm2/(2*span2),2));
+    const Fcx   = Fax2;
+    const Fdr   = Math.sqrt(Math.pow(F2*c_driven/span2,2)+Math.pow(FRx2*c_driven/span2-Fax2*Dm2/(2*span2),2));
+
+    html =
+      '<div class="section-title">🔹 悬臂式主动锥齿轮轴承载荷</div>' +
+      '<div class="formula-box">' +
+        'a = 齿面中点到前轴承A距离；b = 前后轴承中心距（A到B）<br>' +
+        '前轴承A径向力：√{[F·(a+b)/a]² + [F<sub>Rx</sub>·(a+b)/a − F<sub>ax</sub>·D<sub>m1</sub>/(2a)]²}<br>' +
+        '前轴承A轴向力 = |F<sub>ax</sub>|（止推轴承承受全部主动轮轴向力）<br>' +
+        '后轴承B径向力：√{[F·b/a]² + [F<sub>Rx</sub>·b/a − F<sub>ax</sub>·D<sub>m1</sub>/(2a)]²}<br>' +
+        '后轴承B轴向力 = 0<br>' +
+        '<span style="color:#888">a='+a_+'mm，b='+b_+'mm，D<sub>m1</sub>='+fmtN(Dm1,1)+'mm</span>' +
+      '</div>' +
+      '<div class="method-row">' +
+      mkCard({ label: '前轴承A径向力 Far',   value: fmtN(Far),   unit: 'N', note: 'F₁='+fmtN(F1,1)+'N，FRx1='+fmtN(FRx1,1)+'N，Fax1='+fmtN(Fax1,1)+'N → √{[F·(a+b)/a]²+[FRx·(a+b)/a−Fax·Dm1/(2a)]²}' })+
+      mkCard({ label: '前轴承A轴向力 Fax_A', value: fmtN(Fax_A), unit: 'N', note: '= |Fax1|（止推轴承）' })+
+      mkCard({ label: '后轴承B径向力 Fbr',   value: fmtN(Fbr),   unit: 'N', note: '√{[F·b/a]²+[FRx·b/a−Fax·Dm1/(2a)]²}' })+
+      mkCard({ label: '后轴承B轴向力 Fbx',   value: '0',         unit: 'N', note: '悬臂式后轴承B不承受轴向力' })+
+      '</div>' +
+
+      '<div class="section-title" style="margin-top:10px">🔹 悬臂式从动锥齿轮轴承载荷（差速器壳）</div>' +
+      '<div class="formula-box">' +
+        '尺寸：c = 从动轮到短侧止推轴承C；d = 从动轮到长侧浮动轴承D；总间距 = c+d<br>' +
+        'C(短侧止推)径向力：√{[F·d/(c+d)]² + [F<sub>Rx</sub>·d/(c+d) + F<sub>ax</sub>·D<sub>m2</sub>/(2(c+d))]²}<br>' +
+        'C(短侧止推)轴向力 = F<sub>ax2</sub>（止推端）<br>' +
+        'D(长侧浮动)径向力：√{[F·c/(c+d)]² + [F<sub>Rx</sub>·c/(c+d) − F<sub>ax</sub>·D<sub>m2</sub>/(2(c+d))]²}<br>' +
+        'D(长侧浮动)轴向力 = 0<br>' +
+        '<span style="color:#888">c(短侧)='+fmtN(c_driven,0)+'mm，d(长侧)='+fmtN(d_driven,0)+'mm，D<sub>m2</sub>='+fmtN(Dm2,1)+'mm</span>' +
+      '</div>' +
+      '<div class="method-row">' +
+      mkCard({ label: '短侧止推轴承C径向力 Fcr', value: fmtN(Fcr), unit: 'N', note: 'F₂='+fmtN(F2,1)+'N，FRx2='+fmtN(FRx2,1)+'N，Fax2='+fmtN(Fax2,1)+'N → √{[F·d/(c+d)]²+[FRx·d/(c+d)+Fax·Dm2/(2(c+d))]²}' })+
+      mkCard({ label: '短侧止推轴承C轴向力 Fcx', value: fmtN(Fcx), unit: 'N', note: '= |Fax2|（止推端）' })+
+      mkCard({ label: '长侧浮动轴承D径向力 Fdr', value: fmtN(Fdr), unit: 'N', note: '√{[F·c/(c+d)]²+[FRx·c/(c+d)−Fax·Dm2/(2(c+d))]²}' })+
+      mkCard({ label: '长侧浮动轴承D轴向力 Fdx', value: '0',       unit: 'N', note: '浮动端，Fdx=0' })+
+      '</div>' +
+      '<div class="tip-box" style="margin-top:8px">建议：主动齿轮前轴承A选圆锥滚子止推轴承；后轴承B选圆柱滚子轴承；从动齿轮短侧轴承C（止推）选圆锥滚子轴承，长侧轴承D（浮动）选圆柱滚子轴承。</div>';
+
+  } else {
+    // ══ 跨置式 ══
+    const a1_ = v('ba1'), a2_ = v('ba2');
+    const a_ = a1_ + a2_;
+
+    // 刘维信，P205，汽车车桥设计
+    const Fr_B = (1/a_)*Math.sqrt(Math.pow(F1*a1_,2)+Math.pow(FRx1*a1_-0.5*Fax1*Dm1,2));
+    const Fr_E = (1/a_)*Math.sqrt(Math.pow(F1*a2_,2)+Math.pow(FRx1*a2_+0.5*Fax1*Dm1,2));
+    const Fa_B = Fr_E;
+    const Fa_E = Fr_B;
+
+    const c_driven_s = v('bd_s');
+    const d_driven_s = v('bc_s');
+    const span2_s = c_driven_s + d_driven_s;
+
+    const Fcr_s  = Math.sqrt(Math.pow(F2*d_driven_s/span2_s,2)+Math.pow(FRx2*d_driven_s/span2_s+Fax2*Dm2/(2*span2_s),2));
+    const Fcx_s  = Fax2;
+    const Fdr_s  = Math.sqrt(Math.pow(F2*c_driven_s/span2_s,2)+Math.pow(FRx2*c_driven_s/span2_s-Fax2*Dm2/(2*span2_s),2));
+
+    html =
+      '<div class="section-title">🔸 跨置式主动锥齿轮轴承载荷</div>' +
+      '<div class="formula-box">' +
+        'a₁ = 齿面中点到前轴承B距离；a₂ = 齿面中点到后轴承E距离<br>' +
+        '前轴承B径向力：(1/(a₁+a₂))·√{[F₁·a₁]² + [F<sub>Rx1</sub>·a₁ − 0.5·F<sub>ax1</sub>·D<sub>m1</sub>]²}（刘维信，P205，汽车车桥设计）<br>' +
+        '前轴承B轴向力 = 后轴承E径向力（对于轴交角为90°的圆锥齿轮传动副，一个齿轮的轴向力等于另一个齿轮的径向力）<br>' +
+        '后轴承E径向力：(1/(a₁+a₂))·√{[F₁·a₂]² + [F<sub>Rx1</sub>·a₂ + 0.5·F<sub>ax1</sub>·D<sub>m1</sub>]²}<br>' +
+        '后轴承E轴向力 = 前轴承B径向力<br>' +
+        '<span style="color:#888">a₁='+a1_+'mm，a₂='+a2_+'mm，D<sub>m1</sub>='+fmtN(Dm1,1)+'mm</span>' +
+      '</div>' +
+      '<div class="method-row">' +
+      mkCard({ label: '前轴承B径向力 Fr_B', value: fmtN(Fr_B), unit: 'N', note: 'F₁='+fmtN(F1,1)+'N，FRx1='+fmtN(FRx1,1)+'N，Fax1='+fmtN(Fax1,1)+'N → (1/(a₁+a₂))·√{[F₁·a₁]²+[FRx1·a₁−0.5·Fax1·Dm1]²}' })+
+      mkCard({ label: '前轴承B轴向力 Fa_B', value: fmtN(Fa_B), unit: 'N', note: '= 后轴承E径向力（90°锥齿轮轴力关系）' })+
+      mkCard({ label: '后轴承E径向力 Fr_E', value: fmtN(Fr_E), unit: 'N', note: '(1/(a₁+a₂))·√{[F₁·a₂]²+[FRx1·a₂+0.5·Fax1·Dm1]²}' })+
+      mkCard({ label: '后轴承E轴向力 Fa_E', value: fmtN(Fa_E), unit: 'N', note: '= 前轴承B径向力（90°锥齿轮轴力关系）' })+
+      '</div>' +
+
+      '<div class="section-title" style="margin-top:10px">🔸 跨置式从动锥齿轮轴承载荷（差速器壳）</div>' +
+      '<div class="formula-box">' +
+        '尺寸：c = 从动轮到短侧止推轴承C；d = 从动轮到长侧浮动轴承D；总间距 = c+d<br>' +
+        'C(短侧止推)径向力：√{[F·d/(c+d)]² + [F<sub>Rx</sub>·d/(c+d) + F<sub>ax</sub>·D<sub>m2</sub>/(2(c+d))]²}<br>' +
+        'C(短侧止推)轴向力 = F<sub>ax2</sub>（止推端）<br>' +
+        'D(长侧浮动)径向力：√{[F·c/(c+d)]² + [F<sub>Rx</sub>·c/(c+d) − F<sub>ax</sub>·D<sub>m2</sub>/(2(c+d))]²}<br>' +
+        'D(长侧浮动)轴向力 = 0<br>' +
+        '<span style="color:#888">c(短侧)='+fmtN(c_driven_s,0)+'mm，d(长侧)='+fmtN(d_driven_s,0)+'mm，D<sub>m2</sub>='+fmtN(Dm2,1)+'mm</span>' +
+      '</div>' +
+      '<div class="method-row">' +
+      mkCard({ label: '短侧止推轴承C径向力 Fcr', value: fmtN(Fcr_s),  unit: 'N', note: 'F₂='+fmtN(F2,1)+'N，FRx2='+fmtN(FRx2,1)+'N，Fax2='+fmtN(Fax2,1)+'N → √{[F·d/(c+d)]²+[FRx·d/(c+d)+Fax·Dm2/(2(c+d))]²}' })+
+      mkCard({ label: '短侧止推轴承C轴向力 Fcx', value: fmtN(Fcx_s),  unit: 'N', note: '= |Fax2|（止推端）' })+
+      mkCard({ label: '长侧浮动轴承D径向力 Fdr', value: fmtN(Fdr_s),  unit: 'N', note: '√{[F·c/(c+d)]²+[FRx·c/(c+d)−Fax·Dm2/(2(c+d))]²}' })+
+      mkCard({ label: '长侧浮动轴承D轴向力 Fdx', value: '0',           unit: 'N', note: '浮动端，Fdx=0' })+
+      '</div>' +
+      '<div class="tip-box" style="margin-top:8px">建议：主动齿轮前轴承B选圆锥滚子止推轴承；后轴承E选圆柱滚子轴承；从动齿轮短侧轴承C（止推）选圆锥滚子轴承，长侧轴承D（浮动）选圆柱滚子轴承。</div>';
+  }
+
+  document.getElementById('bearingResults').innerHTML = html;
+}
+document.addEventListener('contextmenu', e => e.preventDefault());
+document.addEventListener('keydown', e => {
+if (e.key === 'F12' || 
+(e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) ||
+(e.ctrlKey && e.key === 'U') ||
+(e.ctrlKey && e.key === 'S')) {
+e.preventDefault();
+return false;
+}
+});
+
+</script>
+<script>
+  document.addEventListener('contextmenu', e => e.preventDefault());
+  document.addEventListener('keydown', e => {
+    if (e.key === 'F12' || 
+        (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) ||
+        (e.ctrlKey && e.key === 'U') ||
+        (e.ctrlKey && e.key === 'S')) {
+      e.preventDefault();
+      return false;
+    }
+  });
+</script>
+
+</body>
+</html>
