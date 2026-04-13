@@ -277,8 +277,8 @@ function calcBearingLoad(){
     // 刘维信，P205，汽车车桥设计
     const Fr_B = (1/a_)*Math.sqrt(Math.pow(F1*a1_,2)+Math.pow(FRx1*a1_-0.5*Fax1*Dm1,2));
     const Fr_E = (1/a_)*Math.sqrt(Math.pow(F1*a2_,2)+Math.pow(FRx1*a2_+0.5*Fax1*Dm1,2));
-    const Fa_B = Fr_E;
-    const Fa_E = Fr_B;
+    const Fa_B = Fax1;
+    const Fa_E = 0;
 
     const c_driven_s = v('bd_s');
     const d_driven_s = v('bc_s');
@@ -293,16 +293,16 @@ function calcBearingLoad(){
       '<div class="formula-box">' +
         'a₁ = 齿面中点到前轴承B距离；a₂ = 齿面中点到后轴承E距离<br>' +
         '前轴承B径向力：(1/(a₁+a₂))·√{[F₁·a₁]² + [F<sub>Rx1</sub>·a₁ − 0.5·F<sub>ax1</sub>·D<sub>m1</sub>]²}（刘维信，P205，汽车车桥设计）<br>' +
-        '前轴承B轴向力 = 后轴承E径向力（对于轴交角为90°的圆锥齿轮传动副，一个齿轮的轴向力等于另一个齿轮的径向力）<br>' +
+        '前轴承B轴向力 = F<sub>ax1</sub><br>' +
         '后轴承E径向力：(1/(a₁+a₂))·√{[F₁·a₂]² + [F<sub>Rx1</sub>·a₂ + 0.5·F<sub>ax1</sub>·D<sub>m1</sub>]²}<br>' +
-        '后轴承E轴向力 = 前轴承B径向力<br>' +
+        '后轴承E轴向力 = 0<br>' +
         '<span style="color:#888">a₁='+a1_+'mm，a₂='+a2_+'mm，D<sub>m1</sub>='+fmtN(Dm1,1)+'mm</span>' +
       '</div>' +
       '<div class="method-row">' +
       mkCard({ label: '前轴承B径向力 Fr_B', value: fmtN(Fr_B), unit: 'N', note: 'F₁='+fmtN(F1,1)+'N，FRx1='+fmtN(FRx1,1)+'N，Fax1='+fmtN(Fax1,1)+'N → (1/(a₁+a₂))·√{[F₁·a₁]²+[FRx1·a₁−0.5·Fax1·Dm1]²}' })+
-      mkCard({ label: '前轴承B轴向力 Fa_B', value: fmtN(Fa_B), unit: 'N', note: '= 后轴承E径向力（90°锥齿轮轴力关系）' })+
+      mkCard({ label: '前轴承B轴向力 Fa_B', value: fmtN(Fa_B), unit: 'N', note: '= |Fax1|（止推轴承承受全部主动轮轴向力）' })+
       mkCard({ label: '后轴承E径向力 Fr_E', value: fmtN(Fr_E), unit: 'N', note: '(1/(a₁+a₂))·√{[F₁·a₂]²+[FRx1·a₂+0.5·Fax1·Dm1]²}' })+
-      mkCard({ label: '后轴承E轴向力 Fa_E', value: fmtN(Fa_E), unit: 'N', note: '= 前轴承B径向力（90°锥齿轮轴力关系）' })+
+      mkCard({ label: '后轴承E轴向力 Fa_E', value: fmtN(Fa_E), unit: 'N', note: '= 0' })+
       '</div>' +
 
       '<div class="section-title" style="margin-top:10px">🔸 跨置式从动锥齿轮轴承载荷（差速器壳）</div>' +
